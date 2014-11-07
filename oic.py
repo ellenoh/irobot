@@ -15,6 +15,7 @@ class CODES(object):
     safe = Opcode('Safe', 131, 0)
     full = Opcode('Full', 132, 0)
     leds = Opcode('LEDs', 139, 3)
+    drive_direct = Opcode('Drive Direct', 145, 4)
 
 port = None
 

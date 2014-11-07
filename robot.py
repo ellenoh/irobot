@@ -61,3 +61,16 @@ class Robot(object):
         self.led_state[0] = state
         self.updateLEDState()
 
+    def directDrive(self, left_vel, right_vel):
+        left_high, left_low = int_to_bytes(left_vel)
+        right_high, right_low = int_to_bytes(right_vel)
+        oic.send(CODES.drive_direct, right_high, right_low,
+                 left_high, left_low)
+
+
+def int_to_bytes(val):
+    if val >= 0x8000 or val <= -0x8000:
+        raise ValueError('Value must be between -32767 and 32767')
+    if val < 0:
+        val += 0xFFFF
+    return val >> 8, val & 0xFF
