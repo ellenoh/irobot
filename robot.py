@@ -1,5 +1,6 @@
 import oic
-CODES = oic.CODES
+from oic import CODES, SENSORS
+
 PASSIVE, SAFE, FULL = 'passive', 'safe', 'full'
 
 class Robot(object):
@@ -28,9 +29,13 @@ class Robot(object):
     def mode():
         return self.mode
 
+    def reset(self):
+        self.setDefaults()
+
     def setDefaults(self):
-        self.setMode(SAFE)
+        self.setMode(FULL)
         self.led_state = [0, 0, 0]
+        self.pwm_state = [0, 0, 0]
         self.updateLEDState()
         
     def setPowerLED(self, color, intensity):
@@ -67,7 +72,54 @@ class Robot(object):
         oic.send(CODES.drive_direct, right_high, right_low,
                  left_high, left_low)
 
+    def playSong(self, song_number):
+        oic.port.write([141, song_number])
 
+    def defineSong(self, song_number, note_list):
+        song_length = int(len(note_list)/2)
+        l = [140, song_number, song_length]
+        l2 = l + note_list
+        oic.port.write(l2)
+
+    def getBumpDrop(self):
+        retval = oic.read_sensor(SENSORS.bump_drop)
+        byte = retval[0]
+        wheel_drop_castor = get_bit(byte, 4)
+        wheel_drop_left = get_bit(byte, 3)
+        wheel_drop_right = get_bit(byte, 2)
+        bump_left = get_bit(byte, 1)
+        bump_right = get_bit(byte, 0)
+        return ((wheel_drop_castor, wheel_drop_left, wheel_drop_right),
+                (bump_left, bump_right))
+
+    def getBump(self):
+        retval = self.getBumpDrop()
+        return retval[1]
+
+    def getBatteryVoltage(self):
+        retval = oic.read_sensor(SENSORS.battery)
+        voltage = (retval[0]*256 + retval[1])/1000
+        return voltage
+
+    def getAnalogIn(self):
+        retval = oic.read_sensor(SENSORS.analog_in)
+        voltage = (retval[0]*256 + retval[1])*5/1023
+        return voltage
+
+    def setPWM(self, chan, fraction):
+        if chan not in (0, 1, 2):
+            raise ValueError('There is no PWM %d' % chan)
+        if fraction > 1 or fraction < 0:
+            raise ValueError('Invalid fraction: %f' % fraction)
+        self.pwm_state[chan] = int(fraction * 128)
+        print(self.pwm_state)
+        oic.send(CODES.low_side_drivers, self.pwm_state[2],
+                 self.pwm_state[1], self.pwm_state[0])
+        
+               
+def get_bit(val, pos):
+    return bool(val & (1<<pos))
+       
 def int_to_bytes(val):
     if val >= 0x8000 or val <= -0x8000:
         raise ValueError('Value must be between -32767 and 32767')
